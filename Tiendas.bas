@@ -5,13 +5,11 @@ Option Explicit
 '====================================================
 Type HorarioDia
     Inicio As Variant
-    PartidoInicio As Variant
-    PartidoFin As Variant
     Fin As Variant
 End Type
 
 '====================================================
-'   FORMATEADOR DE HORAS (EVITA 0,41666…)
+'   FORMATEADOR DE HORAS 
 '====================================================
 Private Function FmtHora(ByVal v As Variant) As String
     If IsError(v) Or IsEmpty(v) Or v = "" Then
@@ -26,9 +24,7 @@ End Function
 '====================================================
 Private Function HorarioIgual(h1 As HorarioDia, h2 As HorarioDia) As Boolean
     HorarioIgual = (h1.Inicio = h2.Inicio And _
-                    h1.Fin = h2.Fin And _
-                    h1.PartidoInicio = h2.PartidoInicio And _
-                    h1.PartidoFin = h2.PartidoFin)
+                    h1.Fin = h2.Fin)
 End Function
 
 '====================================================
@@ -36,13 +32,11 @@ End Function
 '====================================================
 Private Function DiaVacio(h As HorarioDia) As Boolean
     DiaVacio = (FmtHora(h.Inicio) = "" And _
-                FmtHora(h.Fin) = "" And _
-                FmtHora(h.PartidoInicio) = "" And _
-                FmtHora(h.PartidoFin) = "")
+                FmtHora(h.Fin) = "")
 End Function
 
 '====================================================
-'   DETERMINAR EL CASO (1-5)
+'   DETERMINAR EL CASO (1-2)
 '====================================================
 Private Function ObtenerCaso(L As HorarioDia, S As HorarioDia, D As HorarioDia) As Integer
 
@@ -50,34 +44,18 @@ Private Function ObtenerCaso(L As HorarioDia, S As HorarioDia, D As HorarioDia) 
     If HorarioIgual(L, S) And HorarioIgual(L, D) Then
         ObtenerCaso = 1: Exit Function
     End If
-
     'CASO 2 – MISMO Lun-Sáb, Domingo distinto o cerrado
     If HorarioIgual(L, S) And Not HorarioIgual(L, D) Then
         ObtenerCaso = 2: Exit Function
     End If
+    
+    'Si no coincide ningún caso, se queda en 0 (valor por defecto)
 
-    'CASO 3 – Jornada partida Lun-Vie y Sábado, Domingo cerrado
-    If FmtHora(L.PartidoInicio) <> "" And FmtHora(S.PartidoInicio) <> "" And DiaVacio(D) Then
-        ObtenerCaso = 3: Exit Function
-    End If
-
-    'CASO 4 – Lun-Sáb continuo, Domingo continuo distinto
-    If FmtHora(L.PartidoInicio) = "" And FmtHora(S.PartidoInicio) = "" And _
-       FmtHora(D.PartidoInicio) = "" And HorarioIgual(L, S) And Not HorarioIgual(L, D) Then
-        ObtenerCaso = 4: Exit Function
-    End If
-
-    'CASO 5 – Los tres días con partida
-    If FmtHora(L.PartidoInicio) <> "" And FmtHora(S.PartidoInicio) <> "" And FmtHora(D.PartidoInicio) <> "" Then
-        ObtenerCaso = 5: Exit Function
-    End If
-
-    'SI NO ENCAJA → CASO 0
-    ObtenerCaso = 0
 End Function
 
+
 '====================================================
-'   FORMATO DEL TEXTO (CASOS 1-5)
+'   FORMATO DEL TEXTO (CASOS 1-2)
 '====================================================
 Private Function TextoHorario(caso As Integer, _
                               L As HorarioDia, S As HorarioDia, D As HorarioDia, _
@@ -90,19 +68,19 @@ Private Function TextoHorario(caso As Integer, _
     '----- LITERALES POR IDIOMA -----
     Select Case UCase(idioma)
         Case "EN"
-            sMonFri = "Mon - Fri ": sMonSat = "Mon - Sat ": sMonSun = "Mon - Sun "
+            sMonFri = "Mon - Fri: ": sMonSat = "Mon - Sat: ": sMonSun = "Mon - Sun: "
             sSat = "Sat: ": sSun = "Sun: "
         Case "ES"
-            sMonFri = "Lun - Vie ": sMonSat = "Lun - Sáb ": sMonSun = "Lun - Dom "
+            sMonFri = "Lun - Vie: ": sMonSat = "Lun - Sáb: ": sMonSun = "Lun - Dom: "
             sSat = "Sáb: ": sSun = "Dom: "
         Case "GL"
-            sMonFri = "Luns - Ven ": sMonSat = "Luns - Sáb ": sMonSun = "Luns - Dom "
+            sMonFri = "Lun - Ven: ": sMonSat = "Lun - Sáb: ": sMonSun = "Lun - Dom: "
             sSat = "Sáb: ": sSun = "Dom: "
         Case "CA"
-            sMonFri = "Dl. - Dv. ": sMonSat = "Dl. - Ds. ": sMonSun = "Dl. - Dg. "
-            sSat = "Ds.: ": sSun = "Dg.: "
+            sMonFri = "Dil - Div: ": sMonSat = "Dil - Dis: ": sMonSun = "Dil - Diu: "
+            sSat = "Dis: ": sSun = "Diu: "
         Case Else
-            sMonFri = "Mon - Fri ": sMonSat = "Mon - Sat ": sMonSun = "Mon - Sun "
+            sMonFri = "Mon - Fri: ": sMonSat = "Mon - Sat: ": sMonSun = "Mon - Sun: "
             sSat = "Sat: ": sSun = "Sun: "
     End Select
 
@@ -110,7 +88,11 @@ Private Function TextoHorario(caso As Integer, _
     Select Case caso
 
         Case 1
-            TextoHorario = sMonSun & FmtHora(L.Inicio) & " - " & FmtHora(L.Fin)
+            If InStr(L.Inicio, "-") > 0 Then
+                TextoHorario = sMonSun & FmtHora(L.Inicio) & " / " & FmtHora(L.Fin)
+            Else
+                TextoHorario = sMonSun & FmtHora(L.Inicio) & " - " & FmtHora(L.Fin)
+            End If
 
         Case 2
             If DiaVacio(D) Then
@@ -120,52 +102,26 @@ Private Function TextoHorario(caso As Integer, _
                                sep & sSun & FmtHora(D.Inicio) & " - " & FmtHora(D.Fin)
             End If
 
-        Case 3
-            TextoHorario = sMonFri & FmtHora(L.Inicio) & " - " & FmtHora(L.PartidoFin) & _
-                           " / " & FmtHora(L.PartidoInicio) & " - " & FmtHora(L.Fin) & _
-                           sep & sSat & FmtHora(S.Inicio) & " - " & FmtHora(S.PartidoFin) & _
-                           " / " & FmtHora(S.PartidoInicio) & " - " & FmtHora(S.Fin)
-
-        Case 4
-            TextoHorario = sMonSat & FmtHora(L.Inicio) & " - " & FmtHora(L.Fin) & _
-                           sep & sSun & FmtHora(D.Inicio) & " - " & FmtHora(D.Fin)
-
-        Case 5
-            TextoHorario = sMonFri & FmtHora(L.Inicio) & " - " & FmtHora(L.PartidoFin) & _
-                           " / " & FmtHora(L.PartidoInicio) & " - " & FmtHora(L.Fin) & _
-                           sep & sSat & FmtHora(S.Inicio) & " - " & FmtHora(S.PartidoFin) & _
-                           " / " & FmtHora(S.PartidoInicio) & " - " & FmtHora(S.Fin) & _
-                           sep & sSun & FmtHora(D.Inicio) & " - " & FmtHora(D.PartidoFin) & _
-                           " / " & FmtHora(D.PartidoInicio) & " - " & FmtHora(D.Fin)
-
     End Select
 End Function
 
 '====================================================
-'   FORMATO GENÉRICO SI NO HAY CASO
+'   TEXTO DOMINGO 30 DE NOVIEMBRE (CASO 0)
 '====================================================
-Private Function TextoHorarioGenerico(L As HorarioDia, S As HorarioDia, D As HorarioDia, idioma As String) As String
-    Dim sMonFri As String, sSat As String, sSun As String
-    Dim sep As String: sep = " | "
-
+Public Function TextoDomingoEspecial(idioma As String) As String
     Select Case UCase(idioma)
         Case "EN"
-            sMonFri = "Mon - Fri ": sSat = "Sat: ": sSun = "Sun: "
+            TextoDomingoEspecial = "Sunday Nov 30: "
         Case "ES"
-            sMonFri = "Lun - Vie ": sSat = "Sáb: ": sSun = "Dom: "
+            TextoDomingoEspecial = "Domingo 30 Nov: "
         Case "GL"
-            sMonFri = "Luns - Ven ": sSat = "Sáb: ": sSun = "Dom: "
+            TextoDomingoEspecial = "Domingo 30 Nov: "
         Case "CA"
-            sMonFri = "Dl. - Dv. ": sSat = "Ds.: ": sSun = "Dg.: "
-        Case Else
-            sMonFri = "Mon - Fri ": sSat = "Sat: ": sSun = "Sun: "
+            TextoDomingoEspecial = "Diumenge 30 Nov: "
     End Select
-
-    TextoHorarioGenerico = _
-        sMonFri & FmtHora(L.Inicio) & " - " & FmtHora(L.Fin) & _
-        sep & sSat & FmtHora(S.Inicio) & " - " & FmtHora(S.Fin) & _
-        sep & sSun & FmtHora(D.Inicio) & " - " & FmtHora(D.Fin)
 End Function
+
+
 
 '====================================================
 '   MACRO PRINCIPAL
@@ -177,61 +133,66 @@ Public Sub Horarios()
     Dim L As HorarioDia, S As HorarioDia, D As HorarioDia
     Dim caso As Integer
 
-    Set ws = Sheets("Horarios habituales")
+    Set ws = Sheets("HORARIO ESPAÑA")
 
-    uFila = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+    uFila = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
 
-    For i = 5 To uFila
+    For i = 4 To uFila
 
-        '------ Lunes-Viernes ------
-        L.Inicio = ws.Cells(i, "C").Value
-        If ws.Cells(i, "D").Value <> ws.Cells(i, "E").Value Then
-            L.PartidoInicio = ws.Cells(i, "D").Value
-            L.PartidoFin = ws.Cells(i, "E").Value
-        Else
-            L.PartidoInicio = Empty
-            L.PartidoFin = Empty
-        End If
-        L.Fin = ws.Cells(i, "F").Value
+        L.Inicio = ws.Cells(i, "D").Value
+        L.Fin = ws.Cells(i, "E").Value
+        S.Inicio = ws.Cells(i, "F").Value
+        S.Fin = ws.Cells(i, "G").Value
+        D.Inicio = ws.Cells(i, "H").Value
+        D.Fin = ws.Cells(i, "I").Value
 
-        '------ Sábado ------
-        S.Inicio = ws.Cells(i, "G").Value
-        If ws.Cells(i, "H").Value <> ws.Cells(i, "I").Value Then
-            S.PartidoInicio = ws.Cells(i, "H").Value
-            S.PartidoFin = ws.Cells(i, "I").Value
-        Else
-            S.PartidoInicio = Empty
-            S.PartidoFin = Empty
-        End If
-        S.Fin = ws.Cells(i, "J").Value
-
-        '------ Domingo ------
-        D.Inicio = ws.Cells(i, "K").Value
-        If ws.Cells(i, "L").Value <> ws.Cells(i, "M").Value Then
-            D.PartidoInicio = ws.Cells(i, "L").Value
-            D.PartidoFin = ws.Cells(i, "M").Value
-        Else
-            D.PartidoInicio = Empty
-            D.PartidoFin = Empty
-        End If
-        D.Fin = ws.Cells(i, "N").Value
 
         '------ Determinar caso ------
         caso = ObtenerCaso(L, S, D)
 
         '------ Escribir en Inglés / Español / Gallego / Catalán ------
-        If caso = 0 Then
-            ws.Cells(i, "AF").Value = TextoHorarioGenerico(L, S, D, "EN")
-            ws.Cells(i, "AG").Value = TextoHorarioGenerico(L, S, D, "ES")
-            ws.Cells(i, "AH").Value = TextoHorarioGenerico(L, S, D, "GL")
-            ws.Cells(i, "AI").Value = TextoHorarioGenerico(L, S, D, "CA")
+        If ws.Cells(i,"J").Value = "" Then
+            ws.Cells(i, "P").Value = TextoHorario(caso, L, S, D, "EN")
+            ws.Cells(i, "Q").Value = TextoHorario(caso, L, S, D, "CA")
+            ws.Cells(i, "R").Value = TextoHorario(caso, L, S, D, "GL")
+            ws.Cells(i, "S").Value = TextoHorario(caso, L, S, D, "ES")
+
         Else
-            ws.Cells(i, "AF").Value = TextoHorario(caso, L, S, D, "EN")
-            ws.Cells(i, "AG").Value = TextoHorario(caso, L, S, D, "ES")
-            ws.Cells(i, "AH").Value = TextoHorario(caso, L, S, D, "GL")
-            ws.Cells(i, "AI").Value = TextoHorario(caso, L, S, D, "CA")
+            ws.Cells(i, "P").NumberFormat = "@"
+            ws.Cells(i, "P").Value = TextoHorario(caso, L, S, D, "EN") & Chr(10) & TextoDomingoEspecial("EN") & FmtHora(ws.Cells(i, "J").Value) & " - " & FmtHora(ws.Cells(i, "K").Value)
+            ws.Cells(i, "Q").Value = TextoHorario(caso, L, S, D, "CA") & Chr(10) &TextoDomingoEspecial("CA") & FmtHora(ws.Cells(i, "J").Value) & " - " & FmtHora(ws.Cells(i, "K").Value)
+            ws.Cells(i, "R").Value = TextoHorario(caso, L, S, D, "GL") & Chr(10) & TextoDomingoEspecial("GL") & FmtHora(ws.Cells(i, "J").Value) & " - " & FmtHora(ws.Cells(i, "K").Value)
+            ws.Cells(i, "S").Value = TextoHorario(caso, L, S, D, "ES") & Chr(10) & TextoDomingoEspecial("ES") & FmtHora(ws.Cells(i, "J").Value) & " - " & FmtHora(ws.Cells(i, "K").Value)
+
         End If
 
+
+
     Next i
+
+    ' Reemplazo de caracteres mal codificados en la hoja
+    With ws.Cells
+        ' Vocales minúsculas
+        .Replace What:="Ã¡", Replacement:="á"
+        .Replace What:="Ã©", Replacement:="é"
+        .Replace What:="Ã­", Replacement:="í"
+        .Replace What:="Ã³", Replacement:="ó"
+        .Replace What:="Ãº", Replacement:="ú"
+
+        ' Vocales mayúsculas
+        .Replace What:="Ã", Replacement:="Á"
+        .Replace What:="Ã‰", Replacement:="É"
+        .Replace What:="Ã", Replacement:="Í"
+        .Replace What:="Ã“", Replacement:="Ó"
+        .Replace What:="Ãš", Replacement:="Ú"
+
+        ' Ñ y ñ
+        .Replace What:="Ã±", Replacement:="ñ"
+        .Replace What:="Ã‘", Replacement:="Ñ"
+
+        ' Ü y ü
+        .Replace What:="Ã¼", Replacement:="ü"
+        .Replace What:="Ãœ", Replacement:="Ü"
+    End With
 
 End Sub
