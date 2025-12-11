@@ -122,7 +122,7 @@ Private Function ObtenerCasoHorario( _
         Exit Function
     End If
     
-    ' Caso 2: L = S ≠ D
+    ' Caso 2: L = S ? D
     If SonHorariosIguales(horarioLunesViernes, horarioSabado) And _
        Not SonHorariosIguales(horarioLunesViernes, horarioDomingo) Then
         ObtenerCasoHorario = 2
@@ -195,11 +195,11 @@ Private Function ConstruirTextoHorario( _
     
     Select Case casoHorario
         Case 1
-            ' Caso 1: L = S = D → "Lun - Dom: ..."
+            ' Caso 1: L = S = D ? "Lun - Dom: ..."
             ConstruirTextoHorario = prefijoLunesDomingo & ObtenerTextoDia(horarioLunesViernes)
         
         Case 2
-            ' Caso 2: L = S ≠ D
+            ' Caso 2: L = S ? D
             If EsDiaVacio(horarioDomingo) Then
                 ConstruirTextoHorario = prefijoLunesSabado & ObtenerTextoDia(horarioLunesViernes)
             Else
@@ -451,7 +451,7 @@ Private Function BuscarColumnaEnFilaPorTitulo( _
     ultimaColumna = hoja.Cells(fila, hoja.Columns.Count).End(xlToLeft).Column
     
     For col = 1 To ultimaColumna
-        If Trim$(CStr(hoja.Cells(fila, col).Value)) = titulo Then
+        If Trim$(CStr(hoja.Cells(fila, col).value)) = titulo Then
             BuscarColumnaEnFilaPorTitulo = col
             Exit Function
         End If
@@ -479,7 +479,7 @@ Private Function BuscarColumnaPorTextoEnBloque( _
     
     For fila = filaInicio To filaFin
         For col = 1 To ultimaColumna
-            If Trim$(CStr(hoja.Cells(fila, col).Value)) = titulo Then
+            If Trim$(CStr(hoja.Cells(fila, col).value)) = titulo Then
                 BuscarColumnaPorTextoEnBloque = col
                 Exit Function
             End If
@@ -539,7 +539,7 @@ Private Function DetectarColumnasAperturaCierreDia( _
     
     For col = colInicio To colFin
         For fila = filaSubcabeceraInicio To filaSubcabeceraFin
-            textoCelda = LCase$(Trim$(CStr(hoja.Cells(fila, col).Value)))
+            textoCelda = LCase$(Trim$(CStr(hoja.Cells(fila, col).value)))
             
             If textoCelda <> "" Then
                 ' Cualquier cosa que contenga "apert" cuenta como apertura
@@ -601,13 +601,13 @@ Private Function LeerHorarioDeDia( _
     End If
     
     ' Turno 1
-    If columnasDia.ColApertura(1) <> 0 Then apertura1 = hoja.Cells(fila, columnasDia.ColApertura(1)).Value
-    If columnasDia.ColCierre(1) <> 0 Then cierre1 = hoja.Cells(fila, columnasDia.ColCierre(1)).Value
+    If columnasDia.ColApertura(1) <> 0 Then apertura1 = hoja.Cells(fila, columnasDia.ColApertura(1)).value
+    If columnasDia.ColCierre(1) <> 0 Then cierre1 = hoja.Cells(fila, columnasDia.ColCierre(1)).value
     
     ' Turno 2
     If columnasDia.NumTurnos >= 2 Then
-        If columnasDia.ColApertura(2) <> 0 Then apertura2 = hoja.Cells(fila, columnasDia.ColApertura(2)).Value
-        If columnasDia.ColCierre(2) <> 0 Then cierre2 = hoja.Cells(fila, columnasDia.ColCierre(2)).Value
+        If columnasDia.ColApertura(2) <> 0 Then apertura2 = hoja.Cells(fila, columnasDia.ColApertura(2)).value
+        If columnasDia.ColCierre(2) <> 0 Then cierre2 = hoja.Cells(fila, columnasDia.ColCierre(2)).value
     End If
     
     ' Si hay 2 turnos completos se respetan tal cual
@@ -662,29 +662,38 @@ Public Sub Horarios()
     Dim ultimaFilaDatos As Long
     Dim filaActual As Long
     
+    '========================================
+    '   Estructuras de horarios
+    '========================================
     Dim horarioLunesJueves As HorarioDiaInfo
+    Dim horarioLunesViernes As HorarioDiaInfo
     Dim horarioViernes As HorarioDiaInfo
     Dim horarioSabado As HorarioDiaInfo
     Dim horarioDomingo As HorarioDiaInfo
-
     
-    ' Días especiales 6-7-8 Dic
+    ' Días especiales diciembre
     Dim horarioSabado6 As HorarioDiaInfo
     Dim horarioDomingo7Dic As HorarioDiaInfo
     Dim horarioDomingo14 As HorarioDiaInfo
     Dim horarioDomingo21 As HorarioDiaInfo
     Dim horarioDomingo28 As HorarioDiaInfo
-
     
     Dim casoHorario As Integer
     
+    '========================================
+    '   Configuración de filas
+    '========================================
     Dim filaCabeceraPrincipal As Long
     Dim filaSubcabeceraInicio As Long
     Dim filaSubcabeceraFin As Long
     Dim filaPrimeraDatos As Long
     
+    '========================================
+    '   Columnas cabecera de días
+    '========================================
     Dim colCOD As Long
     Dim colLunesJueves As Long
+    Dim colLunesViernes As Long
     Dim colViernes As Long
     Dim colSabado As Long
     Dim colDomingo As Long
@@ -693,11 +702,13 @@ Public Sub Horarios()
     Dim colDomingo14 As Long
     Dim colDomingo21 As Long
     Dim colDomingo28 As Long
-
     
+    ' Columnas idiomas
     Dim colEN As Long, colES As Long, colGL As Long, colCA As Long
     
+    ' Rangos de bloques de columnas
     Dim colLunesJuevesInicio As Long, colLunesJuevesFin As Long
+    Dim colLunesViernesInicio As Long, colLunesViernesFin As Long
     Dim colViernesInicio As Long, colViernesFin As Long
     Dim colSabadoInicio As Long, colSabadoFin As Long
     Dim colDomingoInicio As Long, colDomingoFin As Long
@@ -707,7 +718,9 @@ Public Sub Horarios()
     Dim colDomingo21Inicio As Long, colDomingo21Fin As Long
     Dim colDomingo28Inicio As Long, colDomingo28Fin As Long
     
+    ' Info de columnas de apertura/cierre por bloque
     Dim columnasLunesJueves As ColumnasDiaInfo
+    Dim columnasLunesViernes As ColumnasDiaInfo
     Dim columnasViernes As ColumnasDiaInfo
     Dim columnasSabado As ColumnasDiaInfo
     Dim columnasDomingo As ColumnasDiaInfo
@@ -717,12 +730,20 @@ Public Sub Horarios()
     Dim columnasDomingo21 As ColumnasDiaInfo
     Dim columnasDomingo28 As ColumnasDiaInfo
     
+    ' Textos resultado
     Dim textoEN As String, textoES As String, textoGL As String, textoCA As String
     Dim celdaCabeceraCOD As Range
     Dim celdaTmp As Range
     
-    ' acumuladores de días especiales (6-7-8 dic)
+    ' Acumuladores días especiales
     Dim extrasEN As String, extrasES As String, extrasGL As String, extrasCA As String
+    
+    ' Flags para saber qué formato usamos
+    Dim usaLunesJuevesMasViernes As Boolean
+    Dim usaLunesViernes As Boolean
+    
+    Dim viernesVacio As Boolean
+    Dim viernesIgualLJ As Boolean
     
     '------------------------------------------------
     ' Localizar hoja
@@ -730,12 +751,16 @@ Public Sub Horarios()
     On Error Resume Next
     Set hojaHorarios = ThisWorkbook.Worksheets("Horarios habituales")
     If hojaHorarios Is Nothing Then
+        Set hojaHorarios = ThisWorkbook.Worksheets("HORARIO ESPAÑA")
+        If hojaHorarios Is Nothing Then
         Set hojaHorarios = ThisWorkbook.Worksheets("HORARIO INTERNACIONAL")
+        End If
+    
     End If
     On Error GoTo ErrHandler
     
     If hojaHorarios Is Nothing Then
-        MsgBox "No se ha encontrado la hoja de horarios (""Horarios habituales"" o ""HORARIO INTERNACIONAL"").", _
+        MsgBox "No se ha encontrado la hoja de horarios (""Horarios habituales"" o ""HORARIO ESPAÑA"").", _
                vbCritical, "Horarios"
         Exit Sub
     End If
@@ -803,33 +828,24 @@ Public Sub Horarios()
     End If
     
     '------------------------------------------------
-    ' Bloques de días
+    ' Bloques de días (cabeceras)
     '------------------------------------------------
+    ' Formato España: "Lunes a Jueves" + "Viernes"
     colLunesJueves = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Lunes a Jueves")
     colViernes = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Viernes")
+    
+    ' Formato Internacional: "Lunes a Viernes"
+    colLunesViernes = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Lunes a Viernes")
+    
     colSabado = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Sábado")
     colDomingo = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo")
     
     ' Días especiales de diciembre 2025
-    colSabado6 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Sábado 06-12")
-    If colSabado6 = 0 Then
-        colSabado6 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Sabado 06-12")
-        If colSabado6 = 0 Then
-            colSabado6 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Sábado 6")
-            If colSabado6 = 0 Then colSabado6 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Sabado 6")
-        End If
-    End If
-    
-    colDomingo7Dic = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 07-12")
-    If colDomingo7Dic = 0 Then
-        colDomingo7Dic = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 7")
-    End If
-    
     colDomingo14 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 14-12")
     If colDomingo14 = 0 Then
         colDomingo14 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 14")
     End If
-
+    
     colDomingo21 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 21-12")
     If colDomingo21 = 0 Then
         colDomingo21 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 21")
@@ -839,11 +855,27 @@ Public Sub Horarios()
     If colDomingo28 = 0 Then
         colDomingo28 = BuscarColumnaPorTextoEnBloque(hojaHorarios, filaCabeceraPrincipal, filaSubcabeceraFin, "Domingo 28")
     End If
-   
     
-    ' Lunes y Sábado habituales son obligatorios
-    If colLunesJueves = 0 Or colSabado = 0 Then
-        MsgBox "No se han encontrado correctamente las columnas de Lunes/Sábado.", _
+    ' ¿Qué formato usamos?
+    usaLunesJuevesMasViernes = (colLunesJueves <> 0 And colViernes <> 0)
+    usaLunesViernes = (colLunesViernes <> 0)
+    
+    If Not usaLunesJuevesMasViernes And Not usaLunesViernes Then
+
+        If colLunesJueves <> 0 Then
+            ' Caso especial: hay "Lunes a Jueves" pero no "Viernes".
+            ' Suponemos que el viernes tiene el mismo horario que L-J
+            usaLunesViernes = True
+            colLunesViernes = colLunesJueves
+       Else
+        MsgBox "No se han encontrado correctamente las columnas de lunes (""Lunes a Jueves""/""Viernes"" o ""Lunes a Viernes"").", _
+               vbCritical, "Horarios"
+        Exit Sub
+        End If
+    End If
+    
+    If colSabado = 0 Then
+        MsgBox "No se ha encontrado correctamente la columna de ""Sábado"".", _
                vbCritical, "Horarios"
         Exit Sub
     End If
@@ -851,13 +883,22 @@ Public Sub Horarios()
     '------------------------------------------------
     ' Rangos de columnas para cada bloque
     '------------------------------------------------
-    colLunesJuevesInicio = colLunesJueves
-    colLunesJuevesFin = SiguienteInicio(colLunesJuevesInicio, _
-                                         colSabado, colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
-    colViernesInicio = colViernes
-    colViernesFin = SiguienteInicio(colViernesInicio, _
-                                    colSabado, colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
-
+    If usaLunesJuevesMasViernes Then
+        ' Formato España
+        colLunesJuevesInicio = colLunesJueves
+        colLunesJuevesFin = SiguienteInicio(colLunesJuevesInicio, _
+                                            colViernes, colSabado, colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
+        
+        colViernesInicio = colViernes
+        colViernesFin = SiguienteInicio(colViernesInicio, _
+                                        colSabado, colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
+    ElseIf usaLunesViernes Then
+        ' Formato Internacional
+        colLunesViernesInicio = colLunesViernes
+        colLunesViernesFin = SiguienteInicio(colLunesViernesInicio, _
+                                             colSabado, colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
+    End If
+    
     colSabadoInicio = colSabado
     colSabadoFin = SiguienteInicio(colSabadoInicio, _
                                    colDomingo, colSabado6, colDomingo7Dic, colEN) - 1
@@ -876,47 +917,47 @@ Public Sub Horarios()
         colSabado6Fin = SiguienteInicio(colSabado6Inicio, _
                                         colDomingo7Dic, colDomingo14, colDomingo21, colDomingo28, colEN) - 1
     End If
-
+    
     If colDomingo7Dic > 0 Then
         colDomingo7Inicio = colDomingo7Dic
         colDomingo7Fin = SiguienteInicio(colDomingo7Inicio, _
-                                        colDomingo14, colDomingo21, colDomingo28, colEN) - 1
+                                         colDomingo14, colDomingo21, colDomingo28, colEN) - 1
     End If
-
+    
     If colDomingo14 > 0 Then
         colDomingo14Inicio = colDomingo14
         colDomingo14Fin = SiguienteInicio(colDomingo14Inicio, _
-                                        colDomingo21, colDomingo28, colEN) - 1
+                                          colDomingo21, colDomingo28, colEN) - 1
     End If
-
+    
     If colDomingo21 > 0 Then
         colDomingo21Inicio = colDomingo21
         colDomingo21Fin = SiguienteInicio(colDomingo21Inicio, _
-                                        colDomingo28, colEN) - 1
+                                          colDomingo28, colEN) - 1
     End If
-
+    
     If colDomingo28 > 0 Then
         colDomingo28Inicio = colDomingo28
         colDomingo28Fin = SiguienteInicio(colDomingo28Inicio, colEN) - 1
     End If
-
-    
-    
-    
-    
     
     '------------------------------------------------
     ' Detectar columnas de Apertura/Cierre por bloque
     '------------------------------------------------
-    columnasLunesJueves = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                             colLunesJuevesInicio, colLunesJuevesFin)
-    columnasViernes = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                         colViernesInicio, colViernesFin)
+    If usaLunesJuevesMasViernes Then
+        columnasLunesJueves = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
+                                                                colLunesJuevesInicio, colLunesJuevesFin)
+        columnasViernes = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
+                                                            colViernesInicio, colViernesFin)
+    ElseIf usaLunesViernes Then
+        columnasLunesViernes = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
+                                                                 colLunesViernesInicio, colLunesViernesFin)
+    End If
+    
     columnasSabado = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
                                                        colSabadoInicio, colSabadoFin)
     columnasDomingo = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
                                                         colDomingoInicio, colDomingoFin)
-    
     
     If colSabado6Inicio > 0 Then
         columnasSabado6 = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
@@ -925,25 +966,23 @@ Public Sub Horarios()
     
     If colDomingo7Inicio > 0 Then
         columnasDomingo7 = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                                colDomingo7Inicio, colDomingo7Fin)
+                                                             colDomingo7Inicio, colDomingo7Fin)
     End If
-
+    
     If colDomingo14Inicio > 0 Then
         columnasDomingo14 = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                                colDomingo14Inicio, colDomingo14Fin)
+                                                              colDomingo14Inicio, colDomingo14Fin)
     End If
-
+    
     If colDomingo21Inicio > 0 Then
         columnasDomingo21 = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                                colDomingo21Inicio, colDomingo21Fin)
+                                                              colDomingo21Inicio, colDomingo21Fin)
     End If
-
+    
     If colDomingo28Inicio > 0 Then
         columnasDomingo28 = DetectarColumnasAperturaCierreDia(hojaHorarios, filaSubcabeceraInicio, filaSubcabeceraFin, _
-                                                                colDomingo28Inicio, colDomingo28Fin)
+                                                              colDomingo28Inicio, colDomingo28Fin)
     End If
-    
-    
     
     '------------------------------------------------
     ' Última fila de datos (por COD)
@@ -961,14 +1000,18 @@ Public Sub Horarios()
         extrasGL = ""
         extrasCA = ""
         
-        ' Leer horarios por día
-        horarioLunesJueves = LeerHorarioDeDia(hojaHorarios, filaActual, columnasLunesJueves)
-        horarioViernes = LeerHorarioDeDia(hojaHorarios, filaActual, columnasViernes)
+        ' Leer horarios por día, según formato
+        If usaLunesJuevesMasViernes Then
+            horarioLunesJueves = LeerHorarioDeDia(hojaHorarios, filaActual, columnasLunesJueves)
+            horarioViernes = LeerHorarioDeDia(hojaHorarios, filaActual, columnasViernes)
+        ElseIf usaLunesViernes Then
+            horarioLunesViernes = LeerHorarioDeDia(hojaHorarios, filaActual, columnasLunesViernes)
+        End If
+        
         horarioSabado = LeerHorarioDeDia(hojaHorarios, filaActual, columnasSabado)
         horarioDomingo = LeerHorarioDeDia(hojaHorarios, filaActual, columnasDomingo)
-
         
-        
+        ' Días especiales
         If colSabado6Inicio > 0 Then
             horarioSabado6 = LeerHorarioDeDia(hojaHorarios, filaActual, columnasSabado6)
         Else
@@ -989,66 +1032,65 @@ Public Sub Horarios()
         
         If colDomingo14Inicio > 0 Then
             horarioDomingo14 = LeerHorarioDeDia(hojaHorarios, filaActual, columnasDomingo14)
-        
         Else
             With horarioDomingo14
                 .HoraInicio1 = Empty: .HoraFin1 = Empty
                 .HoraInicio2 = Empty: .HoraFin2 = Empty
             End With
         End If
-
+        
         If colDomingo21Inicio > 0 Then
             horarioDomingo21 = LeerHorarioDeDia(hojaHorarios, filaActual, columnasDomingo21)
-        
         Else
             With horarioDomingo21
                 .HoraInicio1 = Empty: .HoraFin1 = Empty
                 .HoraInicio2 = Empty: .HoraFin2 = Empty
             End With
         End If
-
+        
         If colDomingo28Inicio > 0 Then
             horarioDomingo28 = LeerHorarioDeDia(hojaHorarios, filaActual, columnasDomingo28)
-        
         Else
             With horarioDomingo28
                 .HoraInicio1 = Empty: .HoraFin1 = Empty
                 .HoraInicio2 = Empty: .HoraFin2 = Empty
             End With
         End If
-
-        Dim viernesVacio As Boolean
-        Dim viernesIgualLJ As Boolean
-
-        ' ¿Hay horario de viernes?
-        viernesVacio = (columnasViernes.NumTurnos = 0 Or EsDiaVacio(horarioViernes))
-
-        ' ¿Viernes tiene el mismo horario que Lunes-Jueves?
-        viernesIgualLJ = (Not viernesVacio And SonHorariosIguales(horarioLunesJueves, horarioViernes))
-
-        If viernesIgualLJ Then
-            '------------------------------------------------
-            ' CASO 1: Viernes = Lunes-Jueves -> formato clásico "Mon - Fri"
-            '------------------------------------------------
-            casoHorario = ObtenerCasoHorario(horarioLunesJueves, horarioSabado, horarioDomingo)
+        
+        '--------------------------------------------
+        ' Construcción del texto principal (EN/ES/GL/CA)
+        '--------------------------------------------
+        If usaLunesJuevesMasViernes Then
+            ' Formato España: "Lun - Jue" y "Vie"
+            viernesVacio = (columnasViernes.NumTurnos = 0 Or EsDiaVacio(horarioViernes))
+            viernesIgualLJ = (Not viernesVacio And SonHorariosIguales(horarioLunesJueves, horarioViernes))
             
-            textoEN = ConstruirTextoHorario(casoHorario, horarioLunesJueves, horarioSabado, horarioDomingo, "EN")
-            textoES = ConstruirTextoHorario(casoHorario, horarioLunesJueves, horarioSabado, horarioDomingo, "ES")
-            textoGL = ConstruirTextoHorario(casoHorario, horarioLunesJueves, horarioSabado, horarioDomingo, "GL")
-            textoCA = ConstruirTextoHorario(casoHorario, horarioLunesJueves, horarioSabado, horarioDomingo, "CA")
-        Else
-            '------------------------------------------------
-            ' CASO 2 y 3:
-            '   - Sin viernes -> "Mon - Thu: ..."
-            '   - Viernes distinto -> "Mon - Thu: ... | Fri: ..."
-            '   (y luego Sáb/Dom si aplican)
-            '------------------------------------------------
-            textoEN = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "EN")
-            textoES = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "ES")
-            textoGL = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "GL")
-            textoCA = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "CA")
+            If viernesVacio Or viernesIgualLJ Then
+                ' Viernes igual que Lunes-Jueves -> tratamos como Lunes-Viernes
+                horarioLunesViernes = horarioLunesJueves
+                casoHorario = ObtenerCasoHorario(horarioLunesViernes, horarioSabado, horarioDomingo)
+                
+                textoEN = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "EN")
+                textoES = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "ES")
+                textoGL = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "GL")
+                textoCA = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "CA")
+            Else
+                ' Viernes diferente -> "Mon - Thu: ..." | "Fri: ..."
+                textoEN = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "EN")
+                textoES = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "ES")
+                textoGL = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "GL")
+                textoCA = ConstruirTextoLunesJuevesViernes(horarioLunesJueves, horarioViernes, horarioSabado, horarioDomingo, "CA")
+            End If
+        
+        ElseIf usaLunesViernes Then
+            ' Formato Internacional: "Lun - Vie"
+            casoHorario = ObtenerCasoHorario(horarioLunesViernes, horarioSabado, horarioDomingo)
+            
+            textoEN = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "EN")
+            textoES = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "ES")
+            textoGL = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "GL")
+            textoCA = ConstruirTextoHorario(casoHorario, horarioLunesViernes, horarioSabado, horarioDomingo, "CA")
         End If
-            
         
         '------------------------------------------------
         ' DÍAS ESPECIALES DIC EN BLOQUE ÚNICO
@@ -1074,6 +1116,7 @@ Public Sub Horarios()
             extrasCA = extrasCA & TextoDiaEspecialDic("CA", "DOM7") & ObtenerTextoDia(horarioDomingo7Dic)
         End If
         
+        ' Domingo 14
         If Not EsDiaVacio(horarioDomingo14) Then
             If extrasEN <> "" Then extrasEN = extrasEN & " | "
             If extrasES <> "" Then extrasES = extrasES & " | "
@@ -1085,7 +1128,8 @@ Public Sub Horarios()
             extrasGL = extrasGL & TextoDiaEspecialDic("GL", "DOM14") & ObtenerTextoDia(horarioDomingo14)
             extrasCA = extrasCA & TextoDiaEspecialDic("CA", "DOM14") & ObtenerTextoDia(horarioDomingo14)
         End If
-
+        
+        ' Domingo 21
         If Not EsDiaVacio(horarioDomingo21) Then
             If extrasEN <> "" Then extrasEN = extrasEN & " | "
             If extrasES <> "" Then extrasES = extrasES & " | "
@@ -1097,7 +1141,8 @@ Public Sub Horarios()
             extrasGL = extrasGL & TextoDiaEspecialDic("GL", "DOM21") & ObtenerTextoDia(horarioDomingo21)
             extrasCA = extrasCA & TextoDiaEspecialDic("CA", "DOM21") & ObtenerTextoDia(horarioDomingo21)
         End If
-
+        
+        ' Domingo 28
         If Not EsDiaVacio(horarioDomingo28) Then
             If extrasEN <> "" Then extrasEN = extrasEN & " | "
             If extrasES <> "" Then extrasES = extrasES & " | "
@@ -1110,7 +1155,7 @@ Public Sub Horarios()
             extrasCA = extrasCA & TextoDiaEspecialDic("CA", "DOM28") & ObtenerTextoDia(horarioDomingo28)
         End If
         
-        ' Si hay algún especial, añadirlo en una nueva línea
+        ' Añadir especiales en nueva línea
         If extrasEN <> "" Then
             If textoEN <> "" Then textoEN = textoEN & Chr(10)
             textoEN = textoEN & extrasEN
@@ -1149,6 +1194,12 @@ Public Sub Horarios()
             hojaHorarios.Cells(filaActual, colCA).NumberFormat = "@"
             hojaHorarios.Cells(filaActual, colCA).Value = textoCA
         End If
+        
+        ' *** Líneas de depuración comentadas (usaban arrays directamente) ***
+        'hojaHorarios.Cells(filaActual, "AJ").Value = columnasLunesViernes.NumTurnos
+        'hojaHorarios.Cells(filaActual, "AK").Value = columnasLunesViernes.ColApertura(1)
+        'hojaHorarios.Cells(filaActual, "AL").Value = columnasLunesViernes.ColCierre(1)
+        
     Next filaActual
     
     '------------------------------------------------
@@ -1182,3 +1233,8 @@ Public Sub Horarios()
 ErrHandler:
     GestionarError NOMBRE_PROC
 End Sub
+
+
+
+
+
